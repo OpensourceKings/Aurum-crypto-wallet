@@ -1,0 +1,23 @@
+Monero wallet RPC and daemon
+============================
+
+Components: monero-wallet-rpc and monerod v0.18.5.3 (Fluorine Fermi)
+Platform: x86_64 Linux
+
+The binaries were extracted from the official CLI archive:
+https://downloads.getmonero.org/cli/monero-linux-x64-v0.18.5.3.tar.bz2
+
+Official signed archive SHA256:
+3333d0e04c9cbe3023e7e2b6dd369c407f36bb8df5b05fb0a19d7685b3d56dfc
+
+The signed hash list was verified with binaryFate's official key:
+https://raw.githubusercontent.com/monero-project/monero/master/utils/gpg_keys/binaryfate.asc
+Fingerprint used: 81AC591FE9C4B65C5806AFC3F0AF4D462A0BDF92
+
+The upstream Monero license is included beside the binary. Aurum launches
+these components bound to loopback, with core dumps disabled and the processes
+marked non-dumpable. XMR wallet keys remain in the upstream encrypted wallet
+format; Aurum does not implement or reinterpret Monero signing. The bundled
+daemon is started only for the default loopback node, binds RPC and peer
+listeners to loopback, disables inbound port advertisement, and honors a
+configured local Tor SOCKS proxy.
