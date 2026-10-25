@@ -1,0 +1,40 @@
+/build*/
+*.aurum
+wallet.lock
+
+# Wallet material, local settings, and Monero runtime databases
+*.aurum.*
+*.keys
+*.keys.*
+*.xmr/
+aurum-xmr*
+.shared-ringdb/
+*.mdb
+*.mdb-lock
+*.wallet
+wallet.dat
+*.conf
+.env
+.env.*
+!.env.example
+
+# Generated artifacts and optional test dependencies
+*.log
+/test-results/
+/screenshots/
+node_modules/
+CMakeUserPresets.json
+compile_commands.json
+*.zip
+*.tar.gz
+*.tar.bz2
+
+# Obtain upstream Monero executables separately; retain their notices
+/third_party/monero/monero-wallet-rpc
+/third_party/monero/monerod
+
+# Editor and desktop metadata
+.idea/
+.vscode/
+.DS_Store
+*~
