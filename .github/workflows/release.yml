@@ -1,0 +1,119 @@
+name: Release
+# Auto-release: whenever the version in CMakeLists.txt has no matching tag on
+# main, build every platform, tag it and publish a GitHub release.
+on:
+  push:
+    branches: [main]
+    paths-ignore: ["**.md", ".github/workflows/ci.yml"]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: release
+  cancel-in-progress: false
+jobs:
+  version:
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      needed: ${{ steps.v.outputs.needed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: v
+        run: |
+          v=$(sed -n 's/^project(AurumWallet VERSION \([0-9.]*\).*/\1/p' CMakeLists.txt)
+          [ -n "$v" ] || { echo "version not found"; exit 1; }
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          if git rev-parse -q --verify "refs/tags/v$v" >/dev/null; then
+            echo "needed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "needed=true" >> "$GITHUB_OUTPUT"
+          fi
+  linux:
+    needs: version
+    if: needs.version.outputs.needed == 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build g++ qt6-base-dev qt6-websockets-dev \
+            libssl-dev libcrypto++-dev libsodium-dev libsecp256k1-dev libqrencode-dev
+      - name: Build
+        run: |
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON
+          cmake --build build
+          QT_QPA_PLATFORM=offscreen ctest --test-dir build --output-on-failure
+      - name: Package
+        run: |
+          cmake --install build --prefix stage/aurum-wallet
+          tar -C stage -czf aurum-wallet-${{ needs.version.outputs.version }}-linux-x86_64.tar.gz aurum-wallet
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux
+          path: "*.tar.gz"
+  windows:
+    needs: version
+    if: needs.version.outputs.needed == 'true'
+    runs-on: windows-latest
+    continue-on-error: true # experimental port; Linux release still ships
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            mingw-w64-x86_64-gcc mingw-w64-x86_64-cmake mingw-w64-x86_64-ninja
+            mingw-w64-x86_64-qt6-base mingw-w64-x86_64-qt6-websockets
+            mingw-w64-x86_64-openssl mingw-w64-x86_64-crypto++
+            mingw-w64-x86_64-libsodium mingw-w64-x86_64-libsecp256k1
+            mingw-w64-x86_64-libqrencode zip
+      - name: Build
+        run: |
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF
+          cmake --build build
+      - name: Package
+        run: |
+          d=aurum-wallet
+          mkdir -p $d
+          cp build/aurum.exe build/aurum-signer.exe $d/
+          windeployqt6 --no-translations $d/aurum.exe || true
+          for exe in $d/aurum.exe $d/aurum-signer.exe; do
+            ldd "$exe" | awk '/mingw64/ {print $3}' | xargs -I{} cp -n {} $d/
+          done
+          zip -r aurum-wallet-${{ needs.version.outputs.version }}-windows-x86_64.zip $d
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: "*.zip"
+  publish:
+    needs: [version, linux, windows]
+    if: needs.version.outputs.needed == 'true' && !cancelled() && needs.linux.result == 'success'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Checksums
+        working-directory: dist
+        run: sha256sum * > SHA256SUMS.txt
+      - name: Tag and publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          V: ${{ needs.version.outputs.version }}
+        run: |
+          gh release create "v$V" dist/* \
+            --target "$GITHUB_SHA" \
+            --title "Aurum Wallet v$V" \
+            --generate-notes
