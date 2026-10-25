@@ -1,0 +1,10 @@
+Roboto and Roboto Condensed
+Copyright 2011 Google Inc. All Rights Reserved.
+
+Licensed under the Apache License, Version 2.0.
+Full license: ../../licenses/Roboto-Apache-2.0.txt
+Upstream: https://github.com/googlefonts/roboto-2
+
+These unmodified WOFF files were obtained from the official Exodus 26.10.7
+Linux distribution to match the font versions used by its desktop interface.
+No proprietary Exodus code or artwork is included with these files.

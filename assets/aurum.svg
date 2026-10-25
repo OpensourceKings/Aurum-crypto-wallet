@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+<defs>
+ <linearGradient id="tile" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#392b2a"/><stop offset="1" stop-color="#17161e"/></linearGradient>
+ <linearGradient id="metal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ffe3bc"/><stop offset=".46" stop-color="#ecad7d"/><stop offset="1" stop-color="#ba704e"/></linearGradient>
+</defs>
+<rect x="8" y="8" width="240" height="240" rx="56" fill="url(#tile)"/>
+<rect x="9" y="9" width="238" height="238" rx="55" fill="none" stroke="#f8cfaa" stroke-opacity=".18" stroke-width="2"/>
+<path d="M128 44 200 128 128 212 56 128Z M128 91 97 128 128 165 159 128Z" fill="url(#metal)" fill-rule="evenodd"/>
+<path d="M128 44 200 128 174 128 128 74 82 128 56 128Z" fill="#ffe7c9" fill-opacity=".16"/>
+</svg>
