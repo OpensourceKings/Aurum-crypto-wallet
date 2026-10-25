@@ -43,8 +43,16 @@ jobs:
             mingw-w64-x86_64-gcc mingw-w64-x86_64-cmake mingw-w64-x86_64-ninja
             mingw-w64-x86_64-qt6-base mingw-w64-x86_64-qt6-websockets
             mingw-w64-x86_64-openssl mingw-w64-x86_64-crypto++
-            mingw-w64-x86_64-libsodium mingw-w64-x86_64-libsecp256k1
-            mingw-w64-x86_64-libqrencode
+            mingw-w64-x86_64-libsodium             mingw-w64-x86_64-qrencode
+      - name: Build secp256k1 (not packaged in MSYS2)
+        run: |
+          git clone --depth 1 --branch v0.5.1 https://github.com/bitcoin-core/secp256k1.git /tmp/secp
+          cmake -S /tmp/secp -B /tmp/secp/build -G Ninja -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=/mingw64 -DBUILD_SHARED_LIBS=OFF \
+            -DSECP256K1_BUILD_TESTS=OFF -DSECP256K1_BUILD_EXHAUSTIVE_TESTS=OFF \
+            -DSECP256K1_BUILD_BENCHMARK=OFF -DSECP256K1_BUILD_EXAMPLES=OFF
+          cmake --build /tmp/secp/build
+          cmake --install /tmp/secp/build
       - name: Build
         run: |
           cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF
