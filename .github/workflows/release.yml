@@ -6,6 +6,11 @@ on:
     branches: [main]
     paths-ignore: ["**.md", ".github/workflows/ci.yml"]
   workflow_dispatch:
+    inputs:
+      force:
+        description: Rebuild and replace the release for the current version
+        type: boolean
+        default: false
 permissions:
   contents: write
 concurrency:
@@ -26,7 +31,9 @@ jobs:
           v=$(sed -n 's/^project(AurumWallet VERSION \([0-9.]*\).*/\1/p' CMakeLists.txt)
           [ -n "$v" ] || { echo "version not found"; exit 1; }
           echo "version=$v" >> "$GITHUB_OUTPUT"
-          if git rev-parse -q --verify "refs/tags/v$v" >/dev/null; then
+          if [ "${{ inputs.force }}" = "true" ]; then
+            echo "needed=true" >> "$GITHUB_OUTPUT"
+          elif git rev-parse -q --verify "refs/tags/v$v" >/dev/null; then
             echo "needed=false" >> "$GITHUB_OUTPUT"
           else
             echo "needed=true" >> "$GITHUB_OUTPUT"
@@ -41,7 +48,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y cmake ninja-build g++ qt6-base-dev qt6-websockets-dev qt6-svg-dev libqt6svg6 \
-            libssl-dev libcrypto++-dev libsodium-dev libsecp256k1-dev libqrencode-dev
+            libssl-dev libcrypto++-dev libsodium-dev libsecp256k1-dev libqrencode-dev patchelf
       - name: Build
         run: |
           cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON
@@ -50,6 +57,7 @@ jobs:
       - name: Package
         run: |
           cmake --install build --prefix stage/aurum-wallet
+          ./packaging/bundle-linux.sh stage/aurum-wallet
           tar -C stage -czf aurum-wallet-${{ needs.version.outputs.version }}-linux-x86_64.tar.gz aurum-wallet
       - uses: actions/upload-artifact@v4
         with:
@@ -121,6 +129,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           V: ${{ needs.version.outputs.version }}
         run: |
+          gh release delete "v$V" --cleanup-tag --yes 2>/dev/null || true
           gh release create "v$V" dist/* \
             --target "$GITHUB_SHA" \
             --title "Aurum Wallet v$V" \
