@@ -3,6 +3,7 @@
 #include <QObject>
 #include <QString>
 #include <QUrl>
+#include <functional>
 namespace aurum {
 struct SwapRate {
   QString tradeId, provider, kycRating;

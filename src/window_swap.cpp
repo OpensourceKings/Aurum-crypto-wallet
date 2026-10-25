@@ -10,6 +10,7 @@
 #include <QPushButton>
 #include <QTimer>
 #include <QVBoxLayout>
+#include <algorithm>
 namespace aurum {
 namespace {
 struct Pair {
