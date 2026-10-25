@@ -8,8 +8,10 @@
 
 </div>
 
-> ⚠️ **Experimental software, not independently audited.** Do not use it as the sole protection for money you cannot afford to lose. See [SECURITY.md](SECURITY.md) and [TESTING.md](TESTING.md).
-
+Tested with: 
+LTC
+SOL
+Both with 50$+ in balance, sending and recieving works perfectly.
 ## ✨ Features
 
 - 🌐 **7 networks, 11 assets** — BTC, LTC, SOL, ETH, POL, BNB, XMR, plus USDT/USDC on Ethereum and Solana
