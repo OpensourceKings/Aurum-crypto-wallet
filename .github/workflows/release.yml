@@ -40,7 +40,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake ninja-build g++ qt6-base-dev qt6-websockets-dev \
+          sudo apt-get install -y cmake ninja-build g++ qt6-base-dev qt6-websockets-dev qt6-svg-dev libqt6svg6 \
             libssl-dev libcrypto++-dev libsodium-dev libsecp256k1-dev libqrencode-dev
       - name: Build
         run: |
@@ -71,7 +71,7 @@ jobs:
           update: true
           install: >-
             git mingw-w64-x86_64-gcc mingw-w64-x86_64-cmake mingw-w64-x86_64-ninja
-            mingw-w64-x86_64-qt6-base mingw-w64-x86_64-qt6-websockets
+            mingw-w64-x86_64-qt6-base mingw-w64-x86_64-qt6-websockets mingw-w64-x86_64-qt6-svg
             mingw-w64-x86_64-openssl mingw-w64-x86_64-crypto++
             mingw-w64-x86_64-libsodium             mingw-w64-x86_64-qrencode zip
       - name: Build secp256k1 (not packaged in MSYS2)
