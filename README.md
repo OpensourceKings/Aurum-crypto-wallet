@@ -49,3 +49,9 @@ Monero sync over Tor through public nodes can time out; XMR send/receive readine
 ## 📜 License
 
 [MIT](LICENSE). Third-party components keep their own licenses.
+
+## Swaps, catalog and Windows (unverified build)
+
+- **Swap**: All assets → Swap. Uses Trocador; set `AURUM_TROCADOR_API_KEY`. Endpoints were written without access to the (browser-gated) API docs; verify with a live key.
+- **Catalog**: `src/catalog.cpp` lists 107 swap-only coins. No keys or addresses are derived for them; the user supplies the payout address.
+- **Windows**: signer runs via `QProcess` with a job-object sandbox. Monero is disabled on Windows, and the seccomp/`mlock` hardening is replaced by weaker Windows equivalents. This path has not been compiled.

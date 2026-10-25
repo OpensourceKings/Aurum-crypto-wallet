@@ -3,7 +3,11 @@
 #include "network.h"
 #include <QNetworkAccessManager>
 #include <QTimer>
+#ifdef _MSC_VER
+using pid_t = int;
+#else
 #include <sys/types.h>
+#endif
 #include <functional>
 
 namespace aurum {

@@ -11,14 +11,18 @@
 #include <QtEndian>
 #include <cerrno>
 #include <cstring>
+#include <sodium.h>
+#ifdef _WIN32
+#include <QProcess>
+#else
 #include <fcntl.h>
 #include <poll.h>
 #include <signal.h>
-#include <sodium.h>
 #include <spawn.h>
 #include <sys/socket.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#endif
 
 namespace aurum {
 namespace {
@@ -26,6 +30,7 @@ void require(bool ok, const char *error) {
   if (!ok)
     throw std::runtime_error(error);
 }
+#ifndef _WIN32
 struct Child {
   int fd = -1;
   pid_t pid = -1;
@@ -39,6 +44,7 @@ struct Child {
     }
   }
 };
+#endif
 QJsonObject call(QJsonObject request, QByteArray &password) {
   WipePassword wipe(password);
   require(password.size() > 0 && password.size() <= 1024,
@@ -49,6 +55,44 @@ QJsonObject call(QJsonObject request, QByteArray &password) {
   wipe.clear();
   auto metadata = QJsonDocument(request).toJson(QJsonDocument::Compact);
   require(metadata.size() <= 65536, "Signing request is too large");
+#ifdef _WIN32
+  const QString signerPath =
+      QCoreApplication::applicationDirPath() + "/aurum-signer.exe";
+  require(QFileInfo(signerPath).isExecutable(), "Signing helper is missing");
+  QByteArray response;
+  {
+    QProcess proc;
+    proc.setProcessEnvironment(QProcessEnvironment()); // empty environment
+    proc.setStandardErrorFile(QProcess::nullDevice());
+    proc.start(signerPath, {}, QIODevice::ReadWrite | QIODevice::Unbuffered);
+    require(proc.waitForStarted(5000), "Cannot launch isolated signer");
+    quint32 header[2] = {qToBigEndian(quint32(metadata.size())),
+                         qToBigEndian(quint32(passwordSize))};
+    QByteArray out(reinterpret_cast<const char *>(header), sizeof header);
+    out.append(metadata);
+    {
+      QByteArray pw(reinterpret_cast<const char *>(protectedPassword.data()),
+                    int(passwordSize));
+      out.append(pw);
+      sodium_memzero(pw.data(), pw.size());
+    }
+    sodium_memzero(protectedPassword.data(), passwordSize);
+    proc.write(out);
+    sodium_memzero(out.data(), out.size());
+    require(proc.waitForBytesWritten(10000), "Signing helper closed the channel");
+    proc.closeWriteChannel();
+    QElapsedTimer limit;
+    limit.start();
+    while (proc.state() != QProcess::NotRunning || proc.bytesAvailable()) {
+      require(limit.elapsed() < 30000, "Signing helper timed out");
+      proc.waitForReadyRead(200);
+      response.append(proc.readAllStandardOutput());
+      require(response.size() <= 131072, "Invalid signing response length");
+    }
+    require(proc.exitStatus() == QProcess::NormalExit && proc.exitCode() == 0,
+            "Signing helper failed; no transaction was submitted");
+  }
+#else
   auto path = QFile::encodeName(QCoreApplication::applicationDirPath() +
                                 "/aurum-signer");
   require(QFileInfo(QString::fromLocal8Bit(path)).isExecutable(),
@@ -137,6 +181,7 @@ QJsonObject call(QJsonObject request, QByteArray &password) {
   child.pid = -1;
   require(WIFEXITED(status) && WEXITSTATUS(status) == 0,
           "Signing helper failed; no transaction was submitted");
+#endif
   QJsonParseError parse;
   auto doc = QJsonDocument::fromJson(response, &parse);
   require(parse.error == QJsonParseError::NoError && doc.isObject(),

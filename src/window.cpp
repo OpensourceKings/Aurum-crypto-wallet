@@ -1768,6 +1768,12 @@ void WalletWindow::assetList() {
   }
   scroll.setWidget(list);
   v.addWidget(&scroll);
+  auto *swapButton = action("Swap");
+  v.addWidget(swapButton);
+  connect(swapButton, &QPushButton::clicked, &d, [this, &d] {
+    d.accept();
+    QTimer::singleShot(0, this, [this] { swap(selectedAsset_); });
+  });
   d.exec();
 }
 void WalletWindow::sendMonero() {

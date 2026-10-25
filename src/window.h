@@ -111,6 +111,7 @@ private:
   void backupWallet();
   void receive(int selected = 0);
   void send(int selected = 0);
+  void swap(int selected = 0);
   void sendMonero();
   void sendAccountAsset(Chain);
   void assetList();

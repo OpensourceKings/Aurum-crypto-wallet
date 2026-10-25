@@ -9,8 +9,17 @@
 #include <climits>
 #include <csignal>
 #include <sodium.h>
+#ifdef _WIN32
+#include <fcntl.h>
+#include <io.h>
+#include <process.h>
+#include <windows.h>
+#define STDIN_FILENO 0
+#define STDOUT_FILENO 1
+#else
 #include <sys/syscall.h>
 #include <unistd.h>
+#endif
 
 using namespace aurum;
 namespace {
@@ -21,7 +30,7 @@ void require(bool ok, const char *error) {
 void readExact(void *data, size_t size) {
   auto *p = static_cast<char *>(data);
   while (size) {
-    auto n = read(STDIN_FILENO, p, size);
+    auto n = ::read(STDIN_FILENO, p, unsigned(size));
     if (n < 0 && errno == EINTR)
       continue;
     require(n > 0, "Truncated signing request");
@@ -34,7 +43,7 @@ void reply(const QJsonObject &object) {
   const char *p = data.constData();
   size_t left = data.size();
   while (left) {
-    auto n = write(STDOUT_FILENO, p, left);
+    auto n = ::write(STDOUT_FILENO, p, unsigned(left));
     if (n < 0 && errno == EINTR)
       continue;
     if (n <= 0)
@@ -160,10 +169,23 @@ QJsonObject perform(const QJsonObject &r, std::span<unsigned char> password) {
 int main() {
   try {
     protectProcess();
+#ifdef _WIN32
+    _setmode(STDIN_FILENO, _O_BINARY);
+    _setmode(STDOUT_FILENO, _O_BINARY);
+    // Watchdog: a hung signer must not outlive its request.
+    CreateThread(
+        nullptr, 0,
+        [](LPVOID) -> DWORD {
+          Sleep(30000);
+          ExitProcess(2);
+        },
+        nullptr, 0, nullptr);
+#else
     alarm(30);
     // No inherited descriptors or long-lived request server.
     require(syscall(SYS_close_range, 3U, ~0U, 0U) == 0,
             "Cannot close inherited descriptors");
+#endif
     require(sodium_init() >= 0, "Cannot initialize cryptography");
     // Load lazy crypto/provider state before revoking filesystem access.
     unsigned char fixture[32] = {};

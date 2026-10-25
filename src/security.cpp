@@ -1,6 +1,10 @@
 #include "security.h"
 #include <sodium.h>
 #include <stdexcept>
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#endif
 #ifdef __linux__
 #include <cerrno>
 #include <cstddef>
@@ -70,8 +74,27 @@ void sandboxSigner() {
   if (prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0) != 0 ||
       prctl(PR_SET_SECCOMP, SECCOMP_MODE_FILTER, &program) != 0)
     throw std::runtime_error("Cannot isolate signer");
+#elif defined(_WIN32)
+  // Job object: the signer may not spawn children or touch the desktop, and
+  // is killed if the job handle goes away.
+  HANDLE job = CreateJobObjectW(nullptr, nullptr);
+  if (!job)
+    throw std::runtime_error("Cannot isolate signer");
+  JOBOBJECT_EXTENDED_LIMIT_INFORMATION limits{};
+  limits.BasicLimitInformation.LimitFlags =
+      JOB_OBJECT_LIMIT_ACTIVE_PROCESS | JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE |
+      JOB_OBJECT_LIMIT_DIE_ON_UNHANDLED_EXCEPTION;
+  limits.BasicLimitInformation.ActiveProcessLimit = 1;
+  JOBOBJECT_BASIC_UI_RESTRICTIONS ui{};
+  ui.UIRestrictionsClass = JOB_OBJECT_UILIMIT_ALL;
+  if (!SetInformationJobObject(job, JobObjectExtendedLimitInformation, &limits,
+                               sizeof limits) ||
+      !SetInformationJobObject(job, JobObjectBasicUIRestrictions, &ui,
+                               sizeof ui) ||
+      !AssignProcessToJobObject(job, GetCurrentProcess()))
+    throw std::runtime_error("Cannot isolate signer");
 #else
-  throw std::runtime_error("Signer sandbox requires Linux");
+  throw std::runtime_error("Signer sandbox is unsupported on this platform");
 #endif
 }
 void protectProcess() {
@@ -81,8 +104,14 @@ void protectProcess() {
       prctl(PR_SET_DUMPABLE, 0, 0, 0, 0) != 0 ||
       prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0) != 0)
     throw std::runtime_error("Cannot enable process protections");
+#elif defined(_WIN32)
+  // No crash dialogs or WER dumps containing key material; no CWD DLL search.
+  SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX |
+               SEM_NOOPENFILEERRORBOX);
+  SetDllDirectoryW(L"");
+  SetSearchPathMode(BASE_SEARCH_PATH_ENABLE_SAFE_SEARCHMODE);
 #else
-  throw std::runtime_error("This build requires Linux process protections");
+  throw std::runtime_error("Process protections are unsupported here");
 #endif
 }
 SecretBuffer::SecretBuffer(std::size_t size) {
@@ -107,8 +136,6 @@ SecretBuffer::SecretBuffer(std::size_t size) {
         protectedMemory &&
         madvise(reinterpret_cast<void *>(page), end - page, MADV_DONTDUMP) == 0;
   }
-#else
-  protectedMemory = false;
 #endif
   if (!protectedMemory) {
     sodium_free(data_);

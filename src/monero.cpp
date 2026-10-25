@@ -15,12 +15,16 @@
 #include <cerrno>
 #include <csignal>
 #include <cstring>
+#ifdef _WIN32
+#include <windows.h>
+#else
 #include <fcntl.h>
 #include <poll.h>
 #include <sys/prctl.h>
 #include <sys/resource.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#endif
 
 extern char **environ;
 
@@ -197,6 +201,10 @@ bool MoneroClient::spawnDaemon(QString *error) {
   for (auto &s : strings)
     argv.push_back(s.data());
   argv.push_back(nullptr);
+#ifdef _WIN32
+  *error = "Monero is not available on Windows builds yet";
+  return false;
+#else
   const pid_t parentPid = getpid();
   const pid_t child = fork();
   if (child == 0) {
@@ -228,6 +236,7 @@ bool MoneroClient::spawnDaemon(QString *error) {
   }
   daemonPid_ = child;
   return true;
+#endif
 }
 
 bool MoneroClient::spawn(QString *error) {
@@ -304,6 +313,10 @@ bool MoneroClient::spawn(QString *error) {
     for (auto &s : strings)
       argv.push_back(s.data());
     argv.push_back(nullptr);
+#ifdef _WIN32
+    *error = "Monero is not available on Windows builds yet";
+    return false;
+#else
     const pid_t parentPid = getpid();
     pid_t child = fork();
     if (child == 0) {
@@ -336,6 +349,7 @@ bool MoneroClient::spawn(QString *error) {
     pid_ = child;
     port_ = candidate + attempt;
     return true;
+#endif
   }
   *error = "Could not choose a local Monero RPC port";
   return false;
@@ -689,6 +703,7 @@ void MoneroClient::stop() {
   for (auto *reply : manager_.findChildren<QNetworkReply *>())
     if (reply->isRunning())
       reply->abort();
+#ifndef _WIN32
   if (pid_ > 0) {
     kill(pid_, SIGTERM);
     int status = 0;
@@ -709,6 +724,7 @@ void MoneroClient::stop() {
       pid_ = -1;
     }
   }
+#endif
   port_ = 0;
   rpcUser_.fill('\0');
   rpcUser_.clear();
@@ -717,6 +733,9 @@ void MoneroClient::stop() {
 }
 
 void MoneroClient::stopDaemon() {
+#ifdef _WIN32
+  daemonPid_ = -1;
+#else
   if (daemonPid_ <= 0)
     return;
   int status = 0;
@@ -740,6 +759,7 @@ void MoneroClient::stopDaemon() {
   while (waitpid(daemonPid_, &status, 0) < 0 && errno == EINTR) {
   }
   daemonPid_ = -1;
+#endif
 }
 
 } // namespace aurum
