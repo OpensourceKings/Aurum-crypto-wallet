@@ -59,6 +59,9 @@ endif()
 if(WIN32)
   set_target_properties(aurum PROPERTIES WIN32_EXECUTABLE ON)
   target_link_libraries(aurum_crypto PUBLIC ws2_32 crypt32)
+  # secp256k1 is built statically on Windows; without this its header
+  # declares dllimport symbols and the link fails with __imp_ errors.
+  target_compile_definitions(aurum_crypto PUBLIC SECP256K1_STATIC)
 endif()
 add_dependencies(aurum aurum-signer)
 add_dependencies(aurum aurum_monero_hardener)
