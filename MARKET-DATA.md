@@ -1,0 +1,21 @@
+# USD values and market quotes — 0.6.0
+
+Asset lists display holdings as estimated US dollars. Hover a row or value to see both the USD estimate and the exact coin/token quantity, plus its unit price and connection status. The all-assets dialog includes all ten entries. The Exodus appearance displays all ten as selectable asset tabs with coin quantities. Its centered coin holding has a smaller ticker alongside and a USD estimate below.
+
+Prices and charts use the same anonymous production pricing service as Exodus Desktop, `https://pricing.a.exodus.io`. Current prices and 24-hour changes are fetched in two parallel batch requests for eight service identifiers. The two USDT entries share one quote, as do the two USDC entries. Neither stablecoin is assumed to equal exactly $1. Polygon native POL and BNB Smart Chain use the service identifiers MATICNATIVE and BNBBSC. See [EXODUS-PRICING.md](EXODUS-PRICING.md) for the verified protocol and source evidence.
+
+The quote batch is allowed once per minute while the wallet is open. Refresh clicks cannot bypass that limit. HTTP 429 responses cause shared backoff; public endpoint availability is not guaranteed. The service receives asset identifiers and the requester’s IP, never wallet addresses, balances, passwords or transaction data. Service cookies are neither saved nor sent.
+
+Quotes older than five minutes become unavailable. Missing quotes or balances are displayed as a dash; missing balances are not silently treated as zero. A partial portfolio estimate is marked with an approximation symbol and the number of valued balances. Unit prices show additional decimals for low-priced assets. USD holdings are rounded to cents and are approximate market estimates. The display arithmetic is separate from exact integer transaction amounts and signing.
+
+The 24-hour price-change figure assumes current holdings and does not reconstruct deposits, withdrawals, cost basis or realized returns. It is not a profit/loss statement. The preview uses clearly marked sample balances and prices and never loads a user vault.
+
+The asset detail screen uses Exodus hourly history for 1D/1W and daily history for 1M/3M/6M/1Y. Longer ranges follow calendar months, and a fresh current price completes the chart at the current hour. All eight market series are fetched together for the selected granularity. Cached history is reused across assets, chains and shorter ranges until the next completed hour or day. New history requests share a ten-second cooldown and rate-limit backoff with quotes. Locking cancels requests and clears data. Missing or invalid history is labeled unavailable rather than replaced by sample prices. Hovering shows the nearest available sample’s date, time and unit price, with a vertical cursor and point marker. Historical times are rendered in local time. The chart can be collapsed and reopened.
+
+## Password behavior
+
+Opening an existing wallet requires its password on a full-window unlock screen. Every send still requires the password again in the transaction review. Browsing, receiving, price refreshes, appearance changes and exporting an already encrypted backup do not request it. After unlock, the loading screen waits for balances and fresh quotes for all ten assets. It opens automatically when ready, or permits continuing after connection failures or twenty seconds of waiting. Missing values remain unavailable. The five-minute inactivity lock was removed at the user's request; closing the app or choosing Lock closes the public-data view. This does not retain decrypted keys: the short-lived signer and encrypted vault format are unchanged.
+
+## Appearance reference
+
+The Exodus theme follows the asset-detail screenshot supplied by the user: compact dark toolbar, horizontal asset selector, centered hexagonal coin badge and balance, outlined Send/Receive buttons, and price history with working range controls. The startup screen uses a blue-purple faceted background and centered password form. Aurum retains its original app identity. Unsupported Exodus products are not represented as working features. No Exodus source code or binary is included. See [EXODUS-REFERENCE.md](EXODUS-REFERENCE.md) for the visual references.
